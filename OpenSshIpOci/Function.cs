@@ -134,9 +134,9 @@ public class Function
 
             // --- EventBridge Scheduler 登録 ---
             string? closeArn = Environment.GetEnvironmentVariable("CLOSE_FUNCTION_ARN");
+            var runAt = DateTime.UtcNow.AddMinutes(120).ToString("yyyy-MM-ddTHH:mm:ss");
             if (!string.IsNullOrWhiteSpace(closeArn))
             {
-                var runAt = DateTime.UtcNow.AddMinutes(120).ToString("yyyy-MM-ddTHH:mm:ss");
                 context.Logger.LogInformation($"[SCHEDULER] Registering close job. RunAt={runAt}, SecurityListId={createdSlistId}");
 
                 var scheduler = new AmazonSchedulerClient();
@@ -169,7 +169,7 @@ public class Function
             {
                 StatusCode = 200,
                 Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } },
-                Body = JsonSerializer.Serialize(new { security_list_id = createdSlistId })
+                Body = JsonSerializer.Serialize(new { security_list_id = createdSlistId, auto_close_at = runAt })
             };
         }
         catch (Exception ex)
