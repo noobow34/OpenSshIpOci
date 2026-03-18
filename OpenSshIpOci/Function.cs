@@ -140,9 +140,13 @@ public class Function
                 context.Logger.LogInformation($"[SCHEDULER] Registering close job. RunAt={runAt}, SecurityListId={createdSlistId}");
 
                 var scheduler = new AmazonSchedulerClient();
+                var slSuffix = createdSlistId.Length >= 16
+                                ? createdSlistId[^16..]
+                                : createdSlistId;
+                var scheduleName = $"close-ssh-{slSuffix}";
                 await scheduler.CreateScheduleAsync(new CreateScheduleRequest
                 {
-                    Name = $"close-ssh-{createdSlistId}",
+                    Name = scheduleName,
                     ScheduleExpression = $"at({runAt})",
                     ScheduleExpressionTimezone = "UTC",
                     FlexibleTimeWindow = new FlexibleTimeWindow { Mode = FlexibleTimeWindowMode.OFF },
