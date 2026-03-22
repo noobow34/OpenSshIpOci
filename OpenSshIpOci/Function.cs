@@ -46,7 +46,8 @@ public class Function
             string ipv4 = input.TryGetProperty("IPv4", out JsonElement ipv4El) ? ipv4El.GetString() ?? string.Empty : string.Empty;
             string ipv6 = input.TryGetProperty("IPv6", out JsonElement ipv6El) ? ipv6El.GetString() ?? string.Empty : string.Empty;
             int closeMinutes = input.TryGetProperty("AUTO_CLOSE_MINUTES", out JsonElement closeEl)
-                && int.TryParse(closeEl.GetString(), out int m) ? m : 120;
+                && closeEl.ValueKind == JsonValueKind.Number
+                && closeEl.TryGetInt32(out int m) && m > 0 ? m : 120;
 
             context.Logger.LogInformation($"[INPUT] IPv4={ipv4}, IPv6={ipv6}, AutoCloseMinutes={closeMinutes}");
 
