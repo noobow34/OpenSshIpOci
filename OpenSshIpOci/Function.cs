@@ -43,9 +43,12 @@ public class Function
 
         try
         {
-            string ipv4 = input.GetProperty("IPv4").GetString() ?? string.Empty;
-            string ipv6 = input.GetProperty("IPv6").GetString() ?? string.Empty;
-            context.Logger.LogInformation($"[INPUT] IPv4={ipv4}, IPv6={ipv6}");
+            string ipv4 = input.TryGetProperty("IPv4", out JsonElement ipv4El) ? ipv4El.GetString() ?? string.Empty : string.Empty;
+            string ipv6 = input.TryGetProperty("IPv6", out JsonElement ipv6El) ? ipv6El.GetString() ?? string.Empty : string.Empty;
+            int closeMinutes = input.TryGetProperty("AUTO_CLOSE_MINUTES", out JsonElement closeEl)
+                && int.TryParse(closeEl.GetString(), out int m) ? m : 120;
+
+            context.Logger.LogInformation($"[INPUT] IPv4={ipv4}, IPv6={ipv6}, AutoCloseMinutes={closeMinutes}");
 
             // IPv6 プレフィックス加工
             string ipV6WithoutMac = string.Empty;
@@ -94,13 +97,19 @@ public class Function
                     }
                 });
             }
+  
             var createSecurityListDetails = new CreateSecurityListDetails
             {
                 CompartmentId = COMPONET_ID,
                 DisplayName = $"ssh_temp_{DateTime.Now:yyyyMMddHHmmss}",
                 IngressSecurityRules = ingressRules,
                 EgressSecurityRules = new List<EgressSecurityRule>(),
-                VcnId = VCN_ID
+                VcnId = VCN_ID,
+                FreeformTags = new Dictionary<string, string>
+                                {
+                                    { "purpose", "temp-ssh-open" },
+                                    { "expires_at", DateTime.UtcNow.AddMinutes(closeMinutes).ToString("o") } // ISO 8601
+                                }
             };
             var createSecurityListRequest = new CreateSecurityListRequest
             {
@@ -134,7 +143,7 @@ public class Function
 
             // --- EventBridge Scheduler 登録 ---
             string? closeArn = Environment.GetEnvironmentVariable("CLOSE_FUNCTION_ARN");
-            var runAt = DateTime.UtcNow.AddMinutes(120).ToString("yyyy-MM-ddTHH:mm:ss");
+            var runAt = DateTime.UtcNow.AddMinutes(closeMinutes).ToString("yyyy-MM-ddTHH:mm:ss");
             if (!string.IsNullOrWhiteSpace(closeArn))
             {
                 context.Logger.LogInformation($"[SCHEDULER] Registering close job. RunAt={runAt}, SecurityListId={createdSlistId}");
